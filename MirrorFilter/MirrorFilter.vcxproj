@@ -136,6 +136,10 @@
     <Link>
       <AdditionalDependencies>$(DDK_LIB_PATH)\fltmgr.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <Inf>
+      <SpecifyDriverVerDirectiveDate Condition="'$(Configuration)|$(Platform)'=='Vista Debug|x64'">false</SpecifyDriverVerDirectiveDate>
+      <SpecifyDriverVerDirectiveVersion Condition="'$(Configuration)|$(Platform)'=='Vista Debug|x64'">false</SpecifyDriverVerDirectiveVersion>
+    </Inf>
   </ItemDefinitionGroup>
   <ItemGroup>
     <FilesToPackage Include="$(TargetPath)" />
