@@ -4,18 +4,25 @@
 
 PCHAR OsrNTStatusToString(NTSTATUS Status);
 
+typedef enum _DbgLevel {
+	MirError = 1,
+	MirWarning = 2,
+	MirInfo  = 4
+} DbgLevel;
+
+VOID _DbgPrint(_In_ DbgLevel level, _In_z_ _Printf_format_string_ PCSTR Format, ...);
+
 #define DBG_PRINT(_level, _msg, ...) \
-	DbgPrintEx(DPFLTR_IHVDRIVER_ID, _level, "[Mirror]"); \
-	DbgPrintEx(DPFLTR_IHVDRIVER_ID, _level, _msg, __VA_ARGS__)
+	_DbgPrint(_level, _msg, __VA_ARGS__); 
 
 #define DBG_ERROR(_msg, ...) \
-	DBG_PRINT(0x01, _msg, __VA_ARGS__)
+	DBG_PRINT(MirError, _msg, __VA_ARGS__)
 
 #define DBG_WARNING(_msg, ...) \
-	DBG_PRINT(0x02, _msg, __VA_ARGS__)
+	DBG_PRINT(MirWarning, _msg, __VA_ARGS__)
 
 #define DBG_INFO(_msg, ...) \
-	DBG_PRINT(0x04, _msg, __VA_ARGS__)
+	DBG_PRINT(MirInfo, _msg, __VA_ARGS__)
 
 #define DBG_ERROR_ALLOC_FAIL(_var, _size) \
 	DBG_ERROR("Failed to allocated %s, size= %u\n", (_var), (_size));
@@ -31,3 +38,7 @@ PCHAR OsrNTStatusToString(NTSTATUS Status);
 
 #define DBG_INFO_FUNC_LEAVE() \
 	DBG_INFO("<<<< %s\n", __FUNCTION__)
+
+#define DBG_INFO_FLAG(_flags, _flag) \
+	if (FlagOn(_flags, _flag))				\
+		DBG_INFO("%s: %s\n", #_flags, #_flag);  

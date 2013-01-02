@@ -22,6 +22,8 @@ Environment:
 #include "mirror.h"
 #include "volume.h"
 
+#include "Ops.h"
+
 #pragma prefast(disable:__WARNING_ENCODE_MEMBER_FUNCTION_POINTER, "Not valid for kernel mode drivers")
 
 
@@ -126,12 +128,12 @@ MirrorFilterDoRequestOperationStatus(
 
 CONST FLT_OPERATION_REGISTRATION Callbacks[] = {
 
-#if 0 // TODO - List all of the requests to filter.
     { IRP_MJ_CREATE,
       0,
-      MirrorFilterPreOperation,
+      MirrorFilterPreCreate,
       MirrorFilterPostOperation },
 
+#if 0
     { IRP_MJ_CREATE_NAMED_PIPE,
       0,
       MirrorFilterPreOperation,
@@ -321,8 +323,7 @@ CONST FLT_OPERATION_REGISTRATION Callbacks[] = {
       0,
       MirrorFilterPreOperation,
       MirrorFilterPostOperation },
-
-#endif // TODO
+#endif
 
     { IRP_MJ_OPERATION_END }
 };
@@ -698,6 +699,7 @@ Return Value:
     UNREFERENCED_PARAMETER( CompletionContext );
 
 	DBG_INFO_FUNC_ENTER();
+
 
     //
     //  See if this is an operation we would like the operation status

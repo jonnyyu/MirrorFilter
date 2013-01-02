@@ -17,6 +17,9 @@
       <UniqueIdentifier>{8E41214B-6785-4CFE-B992-037D68949A14}</UniqueIdentifier>
       <Extensions>inf;inv;inx;mof;mc;</Extensions>
     </Filter>
+    <Filter Include="Source Files\Ops">
+      <UniqueIdentifier>{c8709585-ecc7-438f-ad17-4e2731520f7d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Inf Include="MirrorFilter.inf">
@@ -54,6 +57,9 @@
     <ClCompile Include="mirror_entry.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="create.c">
+      <Filter>Source Files\Ops</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MirrorFilter.rc">
@@ -84,6 +90,9 @@
     </ClInclude>
     <ClInclude Include="mirror_entry.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Ops.h">
+      <Filter>Source Files\Ops</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
