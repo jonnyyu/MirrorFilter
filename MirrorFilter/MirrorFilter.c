@@ -18,22 +18,16 @@ Environment:
 #include <dontuse.h>
 #include <suppress.h>
 
+#include "logger.h"
+#include "mirror.h"
+
 #pragma prefast(disable:__WARNING_ENCODE_MEMBER_FUNCTION_POINTER, "Not valid for kernel mode drivers")
 
 
 PFLT_FILTER gFilterHandle;
 ULONG_PTR OperationStatusCtx = 1;
 
-#define PTDBG_TRACE_ROUTINES            0x00000001
-#define PTDBG_TRACE_OPERATION_STATUS    0x00000002
 
-ULONG gTraceFlags = 0;
-
-
-#define PT_DBG_PRINT( _dbgLevel, _string )          \
-    (FlagOn(gTraceFlags,(_dbgLevel)) ?              \
-        DbgPrint _string :                          \
-        ((int)0))
 
 /*************************************************************************
     Prototypes
@@ -398,10 +392,10 @@ Return Value:
 
     PAGED_CODE();
 
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("MirrorFilter!MirrorFilterInstanceSetup: Entered\n") );
+    DBG_INFO_FUNC_ENTER();
+	DBG_INFO_FUNC_LEAVE();
 
-    return STATUS_SUCCESS;
+	return STATUS_SUCCESS;
 }
 
 
@@ -440,8 +434,8 @@ Return Value:
 
     PAGED_CODE();
 
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("MirrorFilter!MirrorFilterInstanceQueryTeardown: Entered\n") );
+    DBG_INFO_FUNC_ENTER();
+	DBG_INFO_FUNC_LEAVE();
 
     return STATUS_SUCCESS;
 }
@@ -476,8 +470,8 @@ Return Value:
 
     PAGED_CODE();
 
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("MirrorFilter!MirrorFilterInstanceTeardownStart: Entered\n") );
+    DBG_INFO_FUNC_ENTER();
+	DBG_INFO_FUNC_LEAVE();
 }
 
 
@@ -510,8 +504,7 @@ Return Value:
 
     PAGED_CODE();
 
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("MirrorFilter!MirrorFilterInstanceTeardownComplete: Entered\n") );
+    DBG_INFO_FUNC_ENTER();
 }
 
 
@@ -549,33 +542,39 @@ Return Value:
 
     UNREFERENCED_PARAMETER( RegistryPath );
 
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("MirrorFilter!DriverEntry: Entered\n") );
+	DBG_INFO_FUNC_ENTER();
 
-    //
-    //  Register with FltMgr to tell it our callback routines
-    //
 
-    status = FltRegisterFilter( DriverObject,
-                                &FilterRegistration,
-                                &gFilterHandle );
+	DBG_INFO_FUNC_CALL(MirrorLoadOptions);
+	status = MirrorInitialize();
+	if (NT_SUCCESS(status)) {
+		//
+		//  Register with FltMgr to tell it our callback routines
+		//
 
-    FLT_ASSERT( NT_SUCCESS( status ) );
+		status = FltRegisterFilter( DriverObject,
+									&FilterRegistration,
+									&gFilterHandle );
 
-    if (NT_SUCCESS( status )) {
+		FLT_ASSERT( NT_SUCCESS( status ) );
 
-        //
-        //  Start filtering i/o
-        //
+		if (NT_SUCCESS( status )) {
 
-        status = FltStartFiltering( gFilterHandle );
+			//
+			//  Start filtering i/o
+			//
 
-        if (!NT_SUCCESS( status )) {
+			status = FltStartFiltering( gFilterHandle );
 
-            FltUnregisterFilter( gFilterHandle );
-        }
-    }
+			if (!NT_SUCCESS( status )) {
 
+				FltUnregisterFilter( gFilterHandle );
+				MirrorUninitialize();
+			}
+		}
+	}
+
+	DBG_INFO_FUNC_LEAVE();
     return status;
 }
 
@@ -606,10 +605,11 @@ Return Value:
 
     PAGED_CODE();
 
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("MirrorFilter!MirrorFilterUnload: Entered\n") );
+    DBG_INFO_FUNC_ENTER();
 
     FltUnregisterFilter( gFilterHandle );
+
+    DBG_INFO_FUNC_LEAVE();
 
     return STATUS_SUCCESS;
 }
@@ -654,8 +654,7 @@ Return Value:
     UNREFERENCED_PARAMETER( FltObjects );
     UNREFERENCED_PARAMETER( CompletionContext );
 
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("MirrorFilter!MirrorFilterPreOperation: Entered\n") );
+	DBG_INFO_FUNC_ENTER();
 
     //
     //  See if this is an operation we would like the operation status
@@ -673,9 +672,7 @@ Return Value:
                                                     (PVOID)(++OperationStatusCtx) );
         if (!NT_SUCCESS(status)) {
 
-            PT_DBG_PRINT( PTDBG_TRACE_OPERATION_STATUS,
-                          ("MirrorFilter!MirrorFilterPreOperation: FltRequestOperationStatusCallback Failed, status=%08x\n",
-                           status) );
+            DBG_ERROR("MirrorFilterPreOperation: FltRequestOperationStatusCallback Failed, status=%08x\n", status);
         }
     }
 
@@ -683,6 +680,7 @@ Return Value:
     // rather returns FLT_PREOP_SUCCESS_WITH_CALLBACK.
     // This passes the request down to the next miniFilter in the chain.
 
+	DBG_INFO_FUNC_LEAVE();
     return FLT_PREOP_SUCCESS_WITH_CALLBACK;
 }
 
@@ -730,16 +728,16 @@ Return Value:
 {
     UNREFERENCED_PARAMETER( FltObjects );
 
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("MirrorFilter!MirrorFilterOperationStatusCallback: Entered\n") );
+    DBG_INFO_FUNC_ENTER();
 
-    PT_DBG_PRINT( PTDBG_TRACE_OPERATION_STATUS,
-                  ("MirrorFilter!MirrorFilterOperationStatusCallback: Status=%08x ctx=%p IrpMj=%02x.%02x \"%s\"\n",
+    DBG_INFO("MirrorFilterOperationStatusCallback: Status=%08x ctx=%p IrpMj=%02x.%02x \"%s\"\n",
                    OperationStatus,
                    RequesterContext,
                    ParameterSnapshot->MajorFunction,
                    ParameterSnapshot->MinorFunction,
-                   FltGetIrpName(ParameterSnapshot->MajorFunction)) );
+                   FltGetIrpName(ParameterSnapshot->MajorFunction) );
+
+	DBG_INFO_FUNC_LEAVE();
 }
 
 
@@ -782,8 +780,9 @@ Return Value:
     UNREFERENCED_PARAMETER( CompletionContext );
     UNREFERENCED_PARAMETER( Flags );
 
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("MirrorFilter!MirrorFilterPostOperation: Entered\n") );
+	DBG_INFO_FUNC_ENTER();
+
+	DBG_INFO_FUNC_LEAVE();
 
     return FLT_POSTOP_FINISHED_PROCESSING;
 }
@@ -824,12 +823,13 @@ Return Value:
     UNREFERENCED_PARAMETER( FltObjects );
     UNREFERENCED_PARAMETER( CompletionContext );
 
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("MirrorFilter!MirrorFilterPreOperationNoPostOperation: Entered\n") );
+	DBG_INFO_FUNC_ENTER();
 
     // This template code does not do anything with the callbackData, but
     // rather returns FLT_PREOP_SUCCESS_NO_CALLBACK.
     // This passes the request down to the next miniFilter in the chain.
+
+	DBG_INFO_FUNC_LEAVE();
 
     return FLT_PREOP_SUCCESS_NO_CALLBACK;
 }

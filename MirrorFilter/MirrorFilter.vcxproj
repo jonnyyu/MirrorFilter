@@ -51,7 +51,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="options.c" />
+    <ClCompile Include="string.c" />
+    <ClCompile Include="volume.c" />
     <ResourceCompile Include="MirrorFilter.rc" />
+    <ClCompile Include="allocate.c" />
+    <ClCompile Include="logger.c" />
+    <ClCompile Include="mirror.c" />
     <ClCompile Include="MirrorFilter.c" />
     <Inf Include="MirrorFilter.inf" />
   </ItemGroup>
@@ -144,6 +150,14 @@
   <ItemGroup>
     <FilesToPackage Include="$(TargetPath)" />
     <FilesToPackage Include="@(Inf->'%(CopyOutput)')" Condition="'@(Inf)'!=''" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="allocate.h" />
+    <ClInclude Include="logger.h" />
+    <ClInclude Include="mirror.h" />
+    <ClInclude Include="options.h" />
+    <ClInclude Include="string.h" />
+    <ClInclude Include="volume.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
