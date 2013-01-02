@@ -1,6 +1,7 @@
-#include <wdm.h>
-#include <mountmgr.h>
+#pragma once
 
+#include <fltKernel.h>
+#include <mountmgr.h>
 #include "mirror.h"
 
 typedef 
@@ -21,3 +22,11 @@ MirEnumMountPoints(
 NTSTATUS MirGetMountPoints(
 	_In_ PMOUNTMGR_MOUNT_POINTS MountPoints, 
 	_In_ ULONG Size);
+
+
+NTSTATUS
+MirGetFltVolumeName(
+	_In_ PFLT_VOLUME Volume,
+	_Out_ PUNICODE_STRING VolumeName
+);
+

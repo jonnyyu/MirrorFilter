@@ -45,6 +45,15 @@
     <ClCompile Include="options.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ntstatstr.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="volume_entry.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mirror_entry.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MirrorFilter.rc">
@@ -68,6 +77,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="volume.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="volume_entry.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mirror_entry.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

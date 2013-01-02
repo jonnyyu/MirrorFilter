@@ -1,6 +1,6 @@
 #pragma once
 
-#include <wdm.h>
+#include <fltKernel.h>
 
 PVOID MirAllocatePagedPool(ULONG Size);
 VOID MirFreePool(PVOID Block);

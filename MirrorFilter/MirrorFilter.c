@@ -20,6 +20,7 @@ Environment:
 
 #include "logger.h"
 #include "mirror.h"
+#include "volume.h"
 
 #pragma prefast(disable:__WARNING_ENCODE_MEMBER_FUNCTION_POINTER, "Not valid for kernel mode drivers")
 
@@ -385,7 +386,9 @@ Return Value:
 
 --*/
 {
-    UNREFERENCED_PARAMETER( FltObjects );
+	UNICODE_STRING volumeName;
+	NTSTATUS status = STATUS_SUCCESS;
+
     UNREFERENCED_PARAMETER( Flags );
     UNREFERENCED_PARAMETER( VolumeDeviceType );
     UNREFERENCED_PARAMETER( VolumeFilesystemType );
@@ -393,9 +396,26 @@ Return Value:
     PAGED_CODE();
 
     DBG_INFO_FUNC_ENTER();
-	DBG_INFO_FUNC_LEAVE();
 
-	return STATUS_SUCCESS;
+	status = MirGetFltVolumeName(FltObjects->Volume, &volumeName);
+	if (!NT_SUCCESS(status)) {
+		DBG_ERROR_CALL_FAIL(MirGetFltVolumeName, status);
+		goto Exit;
+	}
+
+	DBG_INFO("Volume = %wZ\n", &volumeName);
+
+	status = MirrorShouldAttachVolume(&volumeName);
+	if (status != STATUS_SUCCESS && status != STATUS_FLT_DO_NOT_ATTACH) {
+		DBG_ERROR_CALL_FAIL(MirShouldAttachVolume, status);
+		status = STATUS_FLT_DO_NOT_ATTACH;
+	}
+	DBG_INFO("Volume = %wZ, Attach: %s\n", &volumeName, status == STATUS_SUCCESS ? "Yes" : "No");
+
+	MirFreeUnicodeString(&volumeName);
+Exit:
+	DBG_INFO_FUNC_LEAVE();
+	return status;
 }
 
 

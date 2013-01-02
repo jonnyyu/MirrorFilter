@@ -51,9 +51,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="mirror_entry.c" />
+    <ClCompile Include="ntstatstr.c" />
     <ClCompile Include="options.c" />
     <ClCompile Include="string.c" />
     <ClCompile Include="volume.c" />
+    <ClCompile Include="volume_entry.c" />
     <ResourceCompile Include="MirrorFilter.rc" />
     <ClCompile Include="allocate.c" />
     <ClCompile Include="logger.c" />
@@ -155,9 +158,11 @@
     <ClInclude Include="allocate.h" />
     <ClInclude Include="logger.h" />
     <ClInclude Include="mirror.h" />
+    <ClInclude Include="mirror_entry.h" />
     <ClInclude Include="options.h" />
     <ClInclude Include="string.h" />
     <ClInclude Include="volume.h" />
+    <ClInclude Include="volume_entry.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
