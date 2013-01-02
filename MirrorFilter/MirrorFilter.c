@@ -449,15 +449,26 @@ Return Value:
 
 --*/
 {
+	UNICODE_STRING volumeName;
+	NTSTATUS status = STATUS_SUCCESS;
     UNREFERENCED_PARAMETER( FltObjects );
     UNREFERENCED_PARAMETER( Flags );
 
     PAGED_CODE();
 
     DBG_INFO_FUNC_ENTER();
-	DBG_INFO_FUNC_LEAVE();
 
-    return STATUS_SUCCESS;
+	status = MirGetFltVolumeName(FltObjects->Volume, &volumeName);
+	if (!NT_SUCCESS(status)) {
+		DBG_ERROR_CALL_FAIL(MirGetFltVolumeName, status);
+		goto Exit;
+	}
+	DBG_INFO("Query Teardown %wZ\n", &volumeName);
+	MirFreeUnicodeString(&volumeName);
+
+Exit:
+	DBG_INFO_FUNC_LEAVE();
+    return status;
 }
 
 
@@ -485,12 +496,23 @@ Return Value:
 
 --*/
 {
-    UNREFERENCED_PARAMETER( FltObjects );
+	UNICODE_STRING volumeName;
+	NTSTATUS status = STATUS_SUCCESS;
+
     UNREFERENCED_PARAMETER( Flags );
 
     PAGED_CODE();
 
     DBG_INFO_FUNC_ENTER();
+
+	status = MirGetFltVolumeName(FltObjects->Volume, &volumeName);
+	if (!NT_SUCCESS(status)) {
+		DBG_ERROR_CALL_FAIL(MirGetFltVolumeName, status);
+		goto Exit;
+	}
+	DBG_INFO("Tear down %wZ\n", &volumeName);
+	MirFreeUnicodeString(&volumeName);
+Exit:
 	DBG_INFO_FUNC_LEAVE();
 }
 
@@ -525,6 +547,7 @@ Return Value:
     PAGED_CODE();
 
     DBG_INFO_FUNC_ENTER();
+	DBG_INFO_FUNC_LEAVE();
 }
 
 
@@ -565,7 +588,7 @@ Return Value:
 	DBG_INFO_FUNC_ENTER();
 
 
-	DBG_INFO_FUNC_CALL(MirrorLoadOptions);
+	DBG_INFO_FUNC_CALL(MirrorInitialize);
 	status = MirrorInitialize();
 	if (NT_SUCCESS(status)) {
 		//

@@ -27,7 +27,7 @@ PCHAR OsrNTStatusToString(NTSTATUS Status);
 	DBG_INFO("Calling %s\n", #_func)
 
 #define DBG_INFO_FUNC_ENTER() \
-	DBG_INFO("===> %s\n", __FUNCTION__)
+	DBG_INFO(">>>> %s\n", __FUNCTION__)
 
 #define DBG_INFO_FUNC_LEAVE() \
-	DBG_INFO("<=== %s\n", __FUNCTION__)
+	DBG_INFO("<<<< %s\n", __FUNCTION__)
