@@ -133,7 +133,6 @@ CONST FLT_OPERATION_REGISTRATION Callbacks[] = {
       MirrorFilterPreCreate,
       MirrorFilterPostOperation },
 
-#if 0
     { IRP_MJ_CREATE_NAMED_PIPE,
       0,
       MirrorFilterPreOperation,
@@ -323,7 +322,6 @@ CONST FLT_OPERATION_REGISTRATION Callbacks[] = {
       0,
       MirrorFilterPreOperation,
       MirrorFilterPostOperation },
-#endif
 
     { IRP_MJ_OPERATION_END }
 };
@@ -693,13 +691,18 @@ Return Value:
 
 --*/
 {
+	PFLT_IO_PARAMETER_BLOCK iopb = Data->Iopb;
     NTSTATUS status;
 
     UNREFERENCED_PARAMETER( FltObjects );
     UNREFERENCED_PARAMETER( CompletionContext );
 
-	DBG_INFO_FUNC_ENTER();
+	//DBG_INFO_FUNC_ENTER();
 
+	
+	DBG_INFO_FLT_FLAGS(Data->Flags);
+	DBG_INFO_IRP_FLAGS(iopb->IrpFlags);
+	DBG_INFO_PRINT_MAJOR_MINOR(iopb->MajorFunction, iopb->MinorFunction);
 
     //
     //  See if this is an operation we would like the operation status
@@ -725,7 +728,7 @@ Return Value:
     // rather returns FLT_PREOP_SUCCESS_WITH_CALLBACK.
     // This passes the request down to the next miniFilter in the chain.
 
-	DBG_INFO_FUNC_LEAVE();
+	//DBG_INFO_FUNC_LEAVE();
     return FLT_PREOP_SUCCESS_WITH_CALLBACK;
 }
 
@@ -825,9 +828,9 @@ Return Value:
     UNREFERENCED_PARAMETER( CompletionContext );
     UNREFERENCED_PARAMETER( Flags );
 
-	DBG_INFO_FUNC_ENTER();
+	//DBG_INFO_FUNC_ENTER();
 
-	DBG_INFO_FUNC_LEAVE();
+	//DBG_INFO_FUNC_LEAVE();
 
     return FLT_POSTOP_FINISHED_PROCESSING;
 }

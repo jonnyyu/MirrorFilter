@@ -136,8 +136,8 @@ _CreateVolumeList(
 	InitializeListHead(&VolumeList->ListHead);
 	KeReleaseSpinLock(&VolumeList->Lock, oldIrql);
 
-	RtlInitUnicodeString(&fakeDosName, L"\\??\\C:");
-	RtlInitUnicodeString(&fakeDeviceName, L"\\Device\\HarddiskVolume2");
+	RtlInitUnicodeString(&fakeDosName, L"\\??\\E:");
+	RtlInitUnicodeString(&fakeDeviceName, L"\\Device\\HarddiskVolume3");
 	status = _NewVolumeEntry(&volumeEntry, &fakeDosName, &fakeDeviceName);
 	if (!NT_SUCCESS(status)) {
 		DBG_ERROR_CALL_FAIL(_NewVolumeEntry, status);
