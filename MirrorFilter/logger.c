@@ -12,16 +12,54 @@ PCHAR _DbgLevel[] = {
 
 
 VOID
-_DbgPrint(
-	_In_ DbgLevel level,
+_DbgPrintEx(
+	_In_ PCSTR FileName,
+	_In_ PCSTR FunctionName,
+	_In_ ULONG LineNumber,
+	_In_ DbgLevel Level,
 	_In_z_ _Printf_format_string_ PCSTR Format,
 	...
 )
 {
-	va_list argList;
-	va_start(argList, Format);
-	vDbgPrintExWithPrefix(_DbgLevel[level], DPFLTR_IHVDRIVER_ID, level,Format, argList);
-	va_end(argList);
+	va_list ArgList;
+
+	UNREFERENCED_PARAMETER(FileName);
+	UNREFERENCED_PARAMETER(FunctionName);
+	UNREFERENCED_PARAMETER(LineNumber);
+
+	va_start(ArgList, Format);
+	_DbgPrintExV(NULL, NULL, 0, Level, Format, ArgList);
+	va_end(ArgList);
+}
+
+VOID
+_DbgPrintExV(
+	_In_ PCSTR FileName,
+	_In_ PCSTR FunctionName,
+	_In_ ULONG LineNumber,
+	_In_ DbgLevel Level,
+	_In_z_ _Printf_format_string_ PCSTR Format,
+	_In_ va_list ArgList
+)
+{
+	UNREFERENCED_PARAMETER(FileName);
+	UNREFERENCED_PARAMETER(FunctionName);
+	UNREFERENCED_PARAMETER(LineNumber);
+
+	vDbgPrintExWithPrefix(_DbgLevel[Level], DPFLTR_IHVDRIVER_ID, Level, Format, ArgList);
+}
+
+VOID
+_DbgPrint(
+	_In_ DbgLevel Level,
+	_In_z_ _Printf_format_string_ PCSTR Format,
+	...
+)
+{
+	va_list ArgList;
+	va_start(ArgList, Format);
+	_DbgPrintExV(NULL, NULL, 0, Level, Format, ArgList);
+	va_end(ArgList);
 }
 
 #define SHOW_FLAG(_fs, _f) \
@@ -71,6 +109,32 @@ _DbgInfoPrintMajorFunction(
 	SHOW_OPT(MajorFunction, IRP_MJ_PNP);                     
 	SHOW_OPT(MajorFunction, IRP_MJ_PNP_POWER);               
 	SHOW_OPT(MajorFunction, IRP_MJ_MAXIMUM_FUNCTION);
+
+
+	//
+	//  Along with the existing IRP_MJ_xxxx);
+	//  this defines all of the operation IDs that can be sent to a mini-filter.
+	//
+	SHOW_OPT(MajorFunction, IRP_MJ_ACQUIRE_FOR_SECTION_SYNCHRONIZATION);
+	SHOW_OPT(MajorFunction, IRP_MJ_RELEASE_FOR_SECTION_SYNCHRONIZATION);
+	SHOW_OPT(MajorFunction, IRP_MJ_ACQUIRE_FOR_MOD_WRITE);
+	SHOW_OPT(MajorFunction, IRP_MJ_RELEASE_FOR_MOD_WRITE);
+	SHOW_OPT(MajorFunction, IRP_MJ_ACQUIRE_FOR_CC_FLUSH);
+	SHOW_OPT(MajorFunction, IRP_MJ_RELEASE_FOR_CC_FLUSH);
+
+
+	//
+	//  Leave space for additional FS_FILTER codes here
+	//
+	SHOW_OPT(MajorFunction, IRP_MJ_FAST_IO_CHECK_IF_POSSIBLE);
+	SHOW_OPT(MajorFunction, IRP_MJ_NETWORK_QUERY_OPEN);
+	SHOW_OPT(MajorFunction, IRP_MJ_MDL_READ);
+	SHOW_OPT(MajorFunction, IRP_MJ_MDL_READ_COMPLETE);
+	SHOW_OPT(MajorFunction, IRP_MJ_PREPARE_MDL_WRITE);
+	SHOW_OPT(MajorFunction, IRP_MJ_MDL_WRITE_COMPLETE);
+	SHOW_OPT(MajorFunction, IRP_MJ_VOLUME_MOUNT);
+	SHOW_OPT(MajorFunction, IRP_MJ_VOLUME_DISMOUNT);
+
 	DbgPrintEx(DPFLTR_IHVDRIVER_ID, MirInfo, "\n");
 }
 
@@ -228,5 +292,110 @@ _DbgInfoPrintFltFlags(
     //  by filter manager.
     //
     SHOW_FLAG(Flags, FLTFL_CALLBACK_DATA_DIRTY); // Set by caller if parameters were changed
+	DbgPrintEx(DPFLTR_IHVDRIVER_ID, MirInfo, "\n");
+}
+
+VOID
+_DbgInfoPrintOperationFlags(
+	_In_ PCSTR VariableName,
+	_In_ UCHAR MajorFunction,
+	_In_ UCHAR MinorFunction,
+	_In_ ULONG OperationFlags)
+{
+	UNREFERENCED_PARAMETER(MinorFunction);
+
+	_DbgPrint(MirInfo, "%s:%u ", VariableName, OperationFlags);
+
+	if (MajorFunction == IRP_MJ_CREATE || MajorFunction == IRP_MJ_CREATE_NAMED_PIPE) {
+		//
+		// Create / Create Named Pipe (IRP_MJ_CREATE/IRP_MJ_CREATE_NAMED_PIPE)
+		//
+		// The following flags must exactly match those in the IoCreateFile call's
+		// options.  The case sensitive flag is added in later, by the parse routine,
+		// and is not an actual option to open.  Rather, it is part of the object
+		// manager's attributes structure.
+		//
+
+		SHOW_FLAG(OperationFlags, SL_FORCE_ACCESS_CHECK);
+		SHOW_FLAG(OperationFlags, SL_OPEN_PAGING_FILE);
+		SHOW_FLAG(OperationFlags, SL_OPEN_TARGET_DIRECTORY);
+		SHOW_FLAG(OperationFlags, SL_STOP_ON_SYMLINK);
+
+		SHOW_FLAG(OperationFlags, SL_CASE_SENSITIVE);
+	}
+
+	if (MajorFunction == IRP_MJ_READ || MajorFunction == IRP_MJ_WRITE) {
+		//
+		// Read / Write (IRP_MJ_READ/IRP_MJ_WRITE)
+		//
+
+		SHOW_FLAG(OperationFlags, SL_KEY_SPECIFIED);
+		SHOW_FLAG(OperationFlags, SL_OVERRIDE_VERIFY_VOLUME);
+		SHOW_FLAG(OperationFlags, SL_WRITE_THROUGH);
+		SHOW_FLAG(OperationFlags, SL_FT_SEQUENTIAL_WRITE);
+		SHOW_FLAG(OperationFlags, SL_FORCE_DIRECT_WRITE);
+		SHOW_FLAG(OperationFlags, SL_REALTIME_STREAM);
+	}
+
+	if (MajorFunction == IRP_MJ_DEVICE_CONTROL) {
+		//
+		// Device I/O Control
+		//
+		//
+		// Same SL_OVERRIDE_VERIFY_VOLUME);as for read/write above.
+		//
+
+		SHOW_FLAG(OperationFlags, SL_READ_ACCESS_GRANTED);
+		SHOW_FLAG(OperationFlags, SL_WRITE_ACCESS_GRANTED);    // Gap for SL_OVERRIDE_VERIFY_VOLUME
+	}
+
+	if (MajorFunction == IRP_MJ_LOCK_CONTROL) {
+		//
+		// Lock (IRP_MJ_LOCK_CONTROL)
+		//
+
+		SHOW_FLAG(OperationFlags, SL_FAIL_IMMEDIATELY);
+		SHOW_FLAG(OperationFlags, SL_EXCLUSIVE_LOCK);
+	}
+
+	if (MajorFunction == IRP_MJ_DIRECTORY_CONTROL || MajorFunction == IRP_MJ_QUERY_EA ||
+		MajorFunction == IRP_MJ_QUERY_QUOTA) {
+		//
+		// QueryDirectory / QueryEa / QueryQuota (IRP_MJ_DIRECTORY_CONTROL/IRP_MJ_QUERY_EA/IRP_MJ_QUERY_QUOTA))
+		//
+
+		SHOW_FLAG(OperationFlags, SL_RESTART_SCAN);
+		SHOW_FLAG(OperationFlags, SL_RETURN_SINGLE_ENTRY);
+		SHOW_FLAG(OperationFlags, SL_INDEX_SPECIFIED);
+	}
+
+	if (MajorFunction == IRP_MJ_DIRECTORY_CONTROL) {
+		//
+		// NotifyDirectory (IRP_MJ_DIRECTORY_CONTROL)
+		//
+
+		SHOW_FLAG(OperationFlags, SL_WATCH_TREE);
+	}
+
+	if (MajorFunction == IRP_MJ_FILE_SYSTEM_CONTROL) {
+		//
+		// FileSystemControl (IRP_MJ_FILE_SYSTEM_CONTROL)
+		//
+		//    minor: mount/verify volume
+		//
+
+		SHOW_FLAG(OperationFlags, SL_ALLOW_RAW_MOUNT);
+	}
+
+	if (MajorFunction == IRP_MJ_SET_INFORMATION) {
+		//
+		//  SetInformationFile (IRP_MJ_SET_INFORMATION)
+		//
+		//      Rename/Link Information
+		//
+
+		SHOW_FLAG(OperationFlags, SL_BYPASS_ACCESS_CHECK);
+	}
+
 	DbgPrintEx(DPFLTR_IHVDRIVER_ID, MirInfo, "\n");
 }

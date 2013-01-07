@@ -51,6 +51,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="context.c" />
     <ClCompile Include="create.c" />
     <ClCompile Include="mirror_entry.c" />
     <ClCompile Include="ntstatstr.c" />
@@ -157,6 +158,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="allocate.h" />
+    <ClInclude Include="context.h" />
     <ClInclude Include="Ops.h" />
     <ClInclude Include="logger.h" />
     <ClInclude Include="mirror.h" />

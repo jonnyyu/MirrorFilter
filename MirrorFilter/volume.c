@@ -31,7 +31,7 @@ MirGetFltVolumeName(
 		goto Exit;
 	}
 
-	status = MirAllocateUnicodeString(VolumeName, NameLength);
+	status = MirAllocateUnicodeString(VolumeName, (USHORT)NameLength);
 	if (!NT_SUCCESS(status)) {
 		DBG_ERROR_ALLOC_FAIL(VolumeName, NameLength);
 		goto Exit;

@@ -12,9 +12,29 @@ typedef enum _DbgLevel {
 
 VOID 
 _DbgPrint(
-	_In_ DbgLevel level, 
+	_In_ DbgLevel Level, 
 	_In_z_ _Printf_format_string_ PCSTR Format, 
 	...
+);
+
+VOID
+_DbgPrintEx(
+	_In_ PCSTR FileName,
+	_In_ PCSTR FunctionName,
+	_In_ ULONG LineNumber,
+	_In_ DbgLevel Level,
+	_In_z_ _Printf_format_string_ PCSTR Format,
+	...
+);
+
+VOID
+_DbgPrintExV(
+	_In_ PCSTR FileName,
+	_In_ PCSTR FunctionName,
+	_In_ ULONG LineNumber,
+	_In_ DbgLevel Level,
+	_In_z_ _Printf_format_string_ PCSTR Format,
+	_In_ va_list ArgList
 );
 
 VOID
@@ -40,12 +60,20 @@ _DbgInfoPrintFltFlags(
 	_In_ PCSTR VariableName,
 	_In_ FLT_CALLBACK_DATA_FLAGS Flags);
 
+VOID
+_DbgInfoPrintOperationFlags(
+	_In_ PCSTR VariableName,
+	_In_ UCHAR MajorFunction,
+	_In_ UCHAR MinorFunction,
+	_In_ ULONG OperationFlags);
+
 
 #define DBG_PRINT(_level, _msg, ...) \
-	_DbgPrint(_level, _msg, __VA_ARGS__); 
+	_DbgPrintEx(__FILE__, __FUNCTION__, __LINE__, _level, _msg, __VA_ARGS__); 
 
 #define DBG_ERROR(_msg, ...) \
-	DBG_PRINT(MirError, _msg, __VA_ARGS__)
+	DBG_PRINT(MirError, _msg, __VA_ARGS__); \
+	NT_ASSERT(FALSE)
 
 #define DBG_WARNING(_msg, ...) \
 	DBG_PRINT(MirWarning, _msg, __VA_ARGS__)
@@ -72,12 +100,13 @@ _DbgInfoPrintFltFlags(
 	if (FlagOn(_flags, _flag))				\
 		DBG_INFO("%s: %s\n", #_flags, #_flag); 
 
-#define DBG_INFO_FLT_FLAGS(_flags) \
-	_DbgInfoPrintFltFlags(#_flags, _flags)
+#define DBG_INFO_FLT_FLAGS(_flags) 
+	//_DbgInfoPrintFltFlags(#_flags, _flags)
 
-#define DBG_INFO_PRINT_MAJOR_MINOR(_majorCode, _minorCode) \
-	_DbgInfoPrintMajorFunction(#_majorCode, _minorCode); \
-	_DbgInfoPrintMinorFunction(#_minorCode, _majorCode, _minorCode);
+#define DBG_INFO_PRINT_MAJOR_MINOR(_majorFunction, _minorFunction, _operationFlags) \
+	_DbgInfoPrintMajorFunction(#_majorFunction, _majorFunction); 
+	//_DbgInfoPrintMinorFunction(#_minorFunction, _majorFunction, _minorFunction); \
+	//_DbgInfoPrintOperationFlags(#_operationFlags, _majorFunction, _minorFunction, _operationFlags);
 
-#define DBG_INFO_IRP_FLAGS(_irpFlags) \
-	_DbgInfoPrintIrpFlags(#_irpFlags, _irpFlags)
+#define DBG_INFO_IRP_FLAGS(_irpFlags) 
+	//_DbgInfoPrintIrpFlags(#_irpFlags, _irpFlags)

@@ -21,7 +21,7 @@ _CreateVolumeList(_In_ PVOLUME_LIST VolumeList, _In_ PMIRROR_LIST MirrorList, _I
 #ifdef ALLOC_PRAGMA
 #pragma alloc_text(PAGED, MirrorInitialize)
 #pragma alloc_text(PAGED, MirrorUninitialize)
-#pragma alloc_text(PAGED, MirrorShouldAttachVolume)
+#pragma alloc_text(PAGED, MirrorAttachInstance)
 #pragma alloc_text(PAGED, _LoadMountPoints)
 #pragma alloc_text(PAGED, _FreeMountPoints)
 #pragma alloc_text(PAGED, _CreateVolumeList)
@@ -29,43 +29,71 @@ _CreateVolumeList(_In_ PVOLUME_LIST VolumeList, _In_ PMIRROR_LIST MirrorList, _I
 
 static MIRROR_GLOBAL gMirror;
 
+typedef BOOLEAN (*PMIRRORENTRYCALLBACK)(
+	_In_ PUNICODE_STRING MirrorPath,
+	_In_ PUNICODE_STRING NewPath,
+	_In_ PVOID Data);
+
+static
+BOOLEAN
+_MirrorEntryCallback(
+	_In_ PUNICODE_STRING MirrorPath,
+	_In_ PUNICODE_STRING NewPath,
+	_In_ PVOID Data)
+{
+	PMIRROR_LIST mirrorList = (PMIRROR_LIST)Data;
+	PMIRROR_ENTRY entry;
+	NTSTATUS status = STATUS_SUCCESS;
+
+	status = MirrorEntryNew(&entry, MirrorPath, NewPath, gMirror.Filter);
+	if (!NT_SUCCESS(status)) {
+		DBG_ERROR_CALL_FAIL(MirrorEntryNew, status);
+		goto Exit;
+	}
+	
+
+	MirrorListInsertTail(mirrorList, entry);
+Exit:
+	return TRUE;
+}
+
+static
+NTSTATUS
+_EnumerateMirrorConfigurations(
+	_In_ PUNICODE_STRING RegistryPath,
+	_In_ PMIRRORENTRYCALLBACK Callback,
+	_In_ PVOID Data)
+{
+	UNICODE_STRING mirrorPath, newPath;
+
+	UNREFERENCED_PARAMETER(RegistryPath);
+
+	RtlInitUnicodeString(&mirrorPath, L"\\??\\E:\\base");
+	RtlInitUnicodeString(&newPath, L"\\??\\E:\\mirror");
+
+	Callback(&mirrorPath, &newPath, Data);
+	return STATUS_SUCCESS;
+}
+
+
 NTSTATUS 
-MirrorInitialize() 
+MirrorInitialize(
+	_In_ PUNICODE_STRING RegistryPath,
+	_In_ PFLT_FILTER Filter
+)
 {
 	NTSTATUS status = STATUS_SUCCESS;
-	MIRROR_LIST MirrorList = {NULL, NULL};
-	PMOUNTMGR_MOUNT_POINTS MountPoints = NULL;
+	MIRROR_LIST mirrorList = {NULL, NULL};
 	
 	DBG_INFO_FUNC_ENTER();
-
 	DBG_INFO("Loading MirrorList\n");
-	
-	status = _LoadMirrorList(&MirrorList);
+
+	gMirror.Filter = Filter;
+	status = _EnumerateMirrorConfigurations(RegistryPath, _MirrorEntryCallback, &mirrorList);
 	if (!NT_SUCCESS(status)) {
-		DBG_ERROR_CALL_FAIL(_LoadMirrorList, status);
 		goto Exit;
 	}
-
-	DBG_INFO("Loading MountPoints\n");
-	status = _LoadMountPoints(&MountPoints);
-	if (!NT_SUCCESS(status)) {
-		DBG_ERROR_CALL_FAIL(_LoadingMountPoints, status);
-		_FreeMirrorList(&MirrorList);
-		goto Exit;
-	}
-
-	DBG_INFO("Creating VolumeList from MountPoints and MirrorList\n");
-	status = _CreateVolumeList(&gMirror.VolumeList, &MirrorList, MountPoints);
-	if (!NT_SUCCESS(status)) {
-		DBG_ERROR_CALL_FAIL(_CreateVolumeList, status);	
-		_FreeMountPoints(&MountPoints);
-		_FreeMirrorList(&MirrorList);
-		goto Exit;
-	}
-
-	_FreeVolumeList(&gMirror.VolumeList);
-	_FreeMountPoints(&MountPoints);
-	_FreeMirrorList(&MirrorList);
+	gMirror.MirrorList = mirrorList;
 
 Exit:
 	DBG_INFO_FUNC_LEAVE();
@@ -169,30 +197,100 @@ Exit:
 
 
 NTSTATUS
-MirrorShouldAttachVolume(
-	_In_ PCUNICODE_STRING VolumeName
+MirrorAttachInstance(
+	_In_ PCFLT_RELATED_OBJECTS FltObjects
 )
-{
-	KIRQL oldIrql = 0;
-	BOOLEAN shouldAttach = FALSE;
-	PLIST_ENTRY entry = NULL;
-	PVOLUME_ENTRY volumeEntry = NULL;
-	DBG_INFO_FUNC_ENTER();
+/*++
+Routine Description:
+
+	This function creates the instance context and attach to given instance.
+
+Arguments:
 	
-	KeAcquireSpinLock(&gMirror.VolumeList.Lock, &oldIrql);
+	FltObjects - The Filter callback objects that is passed to us.
 
-	for(entry = gMirror.VolumeList.ListHead.Flink; 
-		entry != &gMirror.VolumeList.ListHead;
-		entry = entry->Flink) 
-	{
-		volumeEntry = CONTAINING_RECORD(entry, VOLUME_ENTRY, VolumeListEntry);
-		shouldAttach = _VolumeEntryShouldAttach(volumeEntry, VolumeName);
-		if (shouldAttach)
-			break;
-	}	
+	MirrorList - The available mirror entries list.
 
-	KeReleaseSpinLock(&gMirror.VolumeList.Lock, oldIrql);
+Remarks:
+	The function attaches to instance when this instance's volume has mirror entry belong to it.
+	If the instance has at least one mirror entry, the function will create an instance context on it.
+	When creating the instance context, the function will move the matched mirror entry from MirrorList to instance context's
+	MirrorList. This requires acquire SpinLock of the passed in MirrorList. 
+
+	Also the ownership of the moved mirror entries will be managed by the instance context.
+
+Return Value:
+	STATUS_SUCCESS           - If the instance should be attached and the instance context has been created successfully.
+	STATUS_FLT_DO_NOT_ATTACH - If the instance doesn't have any mirror entries belong to it. 
+							   Caller should not attach this instance in this situation.
+	otherwise are error.
+--*/
+{
+	OBJECT_ATTRIBUTES attrs;
+	UNICODE_STRING path, volumeName;
+	HANDLE fileHandle;
+	IO_STATUS_BLOCK ioStatus;
+	NTSTATUS status = STATUS_SUCCESS;
+	PFILE_OBJECT fileObject = NULL;
+	PFLT_VOLUME fltVolume = NULL;
+	
+
+	UNREFERENCED_PARAMETER(FltObjects);
+	
+	DBG_INFO_FUNC_ENTER();
+
+	RtlInitUnicodeString(&path, L"\\??\\C:\\Data");
+	InitializeObjectAttributes(&attrs, &path, OBJ_KERNEL_HANDLE, NULL, NULL);
+	
+	status = ZwCreateFile(&fileHandle,				// FileHandle
+						 FILE_LIST_DIRECTORY|		// desiredAccess, we are opening a directory
+						 SYNCHRONIZE,				// synchronize access so it won't return STATUS_PENDING.
+						 &attrs,				    // specify the path
+						 &ioStatus,					// iostatus result
+						 NULL,						// allocationSize we don't need it.
+						 FILE_ATTRIBUTE_NORMAL,		// normal attributes
+						 FILE_SHARE_READ,			// we are read-only operation, so sharable with other reads
+						 FILE_OPEN,					// open if exist else fail.
+						 FILE_DIRECTORY_FILE,       // open a directory
+						 NULL,						// EaBuffer not needed
+						 0);						// 0 required by WDK
+	
+	status = ObReferenceObjectByHandle(fileHandle,
+									  GENERIC_READ,
+									  *IoFileObjectType,
+									  KernelMode,
+									  &fileObject,
+									  NULL);
+	
+
+	status = FltGetVolumeFromFileObject(FltObjects->Filter, fileObject, &fltVolume);
+	MirGetFltVolumeName(fltVolume, &volumeName);
+
+	DBG_INFO("VolumeName :%wZ\n", &volumeName);
+	
+	FltObjectDereference(fltVolume);
+	ObDereferenceObject(fileObject);
+	ZwClose(fileHandle);
+
+	//KIRQL oldIrql = 0;
+	//BOOLEAN shouldAttach = FALSE;
+	//PLIST_ENTRY entry = NULL;
+	//PVOLUME_ENTRY volumeEntry = NULL;
+	//KeAcquireSpinLock(&gMirror.VolumeList.Lock, &oldIrql);
+
+	//for(entry = gMirror.VolumeList.ListHead.Flink; 
+	//	entry != &gMirror.VolumeList.ListHead;
+	//	entry = entry->Flink) 
+	//{
+	//	volumeEntry = CONTAINING_RECORD(entry, VOLUME_ENTRY, VolumeListEntry);
+	//	shouldAttach = _VolumeEntryShouldAttach(volumeEntry, VolumeName);
+	//	if (shouldAttach)
+	//		break;
+	//}	
+
+	//KeReleaseSpinLock(&gMirror.VolumeList.Lock, oldIrql);
 	
 	DBG_INFO_FUNC_LEAVE();
-	return shouldAttach ? STATUS_SUCCESS : STATUS_FLT_DO_NOT_ATTACH;
+	return STATUS_FLT_DO_NOT_ATTACH;
+	//return shouldAttach ? STATUS_SUCCESS : STATUS_FLT_DO_NOT_ATTACH;
 }

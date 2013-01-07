@@ -23,6 +23,7 @@ Environment:
 #include "volume.h"
 
 #include "Ops.h"
+#include "context.h"
 
 #pragma prefast(disable:__WARNING_ENCODE_MEMBER_FUNCTION_POINTER, "Not valid for kernel mode drivers")
 
@@ -44,7 +45,7 @@ DriverEntry (
     );
 
 NTSTATUS
-MirrorFilterInstanceSetup (
+MFInstanceSetup (
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _In_ FLT_INSTANCE_SETUP_FLAGS Flags,
     _In_ DEVICE_TYPE VolumeDeviceType,
@@ -52,37 +53,37 @@ MirrorFilterInstanceSetup (
     );
 
 VOID
-MirrorFilterInstanceTeardownStart (
+MFInstanceTeardownStart (
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _In_ FLT_INSTANCE_TEARDOWN_FLAGS Flags
     );
 
 VOID
-MirrorFilterInstanceTeardownComplete (
+MFInstanceTeardownComplete (
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _In_ FLT_INSTANCE_TEARDOWN_FLAGS Flags
     );
 
 NTSTATUS
-MirrorFilterUnload (
+MFUnload (
     _In_ FLT_FILTER_UNLOAD_FLAGS Flags
     );
 
 NTSTATUS
-MirrorFilterInstanceQueryTeardown (
+MFInstanceQueryTeardown (
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _In_ FLT_INSTANCE_QUERY_TEARDOWN_FLAGS Flags
     );
 
 FLT_PREOP_CALLBACK_STATUS
-MirrorFilterPreOperation (
+MFPreOperation (
     _Inout_ PFLT_CALLBACK_DATA Data,
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
     );
 
 VOID
-MirrorFilterOperationStatusCallback (
+MFOperationStatusCallback (
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _In_ PFLT_IO_PARAMETER_BLOCK ParameterSnapshot,
     _In_ NTSTATUS OperationStatus,
@@ -90,7 +91,7 @@ MirrorFilterOperationStatusCallback (
     );
 
 FLT_POSTOP_CALLBACK_STATUS
-MirrorFilterPostOperation (
+MFPostOperation (
     _Inout_ PFLT_CALLBACK_DATA Data,
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _In_opt_ PVOID CompletionContext,
@@ -98,16 +99,31 @@ MirrorFilterPostOperation (
     );
 
 FLT_PREOP_CALLBACK_STATUS
-MirrorFilterPreOperationNoPostOperation (
+MFPreOperationNoPostOperation (
     _Inout_ PFLT_CALLBACK_DATA Data,
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
     );
 
 BOOLEAN
-MirrorFilterDoRequestOperationStatus(
+MFDoRequestOperationStatus(
     _In_ PFLT_CALLBACK_DATA Data
     );
+
+
+FLT_PREOP_CALLBACK_STATUS
+MFPreCreate (
+    _Inout_ PFLT_CALLBACK_DATA Data,
+    _In_ PCFLT_RELATED_OBJECTS FltObjects,
+    _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
+);
+
+static
+BOOLEAN
+MFPreCreateCheck(
+	_In_ PFLT_CALLBACK_DATA Data
+);
+
 
 //
 //  Assign text sections for each routine.
@@ -115,11 +131,11 @@ MirrorFilterDoRequestOperationStatus(
 
 #ifdef ALLOC_PRAGMA
 #pragma alloc_text(INIT, DriverEntry)
-#pragma alloc_text(PAGE, MirrorFilterUnload)
-#pragma alloc_text(PAGE, MirrorFilterInstanceQueryTeardown)
-#pragma alloc_text(PAGE, MirrorFilterInstanceSetup)
-#pragma alloc_text(PAGE, MirrorFilterInstanceTeardownStart)
-#pragma alloc_text(PAGE, MirrorFilterInstanceTeardownComplete)
+#pragma alloc_text(PAGE, MFUnload)
+#pragma alloc_text(PAGE, MFInstanceQueryTeardown)
+#pragma alloc_text(PAGE, MFInstanceSetup)
+#pragma alloc_text(PAGE, MFInstanceTeardownStart)
+#pragma alloc_text(PAGE, MFInstanceTeardownComplete)
 #endif
 
 //
@@ -130,200 +146,213 @@ CONST FLT_OPERATION_REGISTRATION Callbacks[] = {
 
     { IRP_MJ_CREATE,
       0,
-      MirrorFilterPreCreate,
-      MirrorFilterPostOperation },
+      MFPreCreate,
+      MFPostOperation },
 
     { IRP_MJ_CREATE_NAMED_PIPE,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_CLOSE,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_READ,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_WRITE,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_QUERY_INFORMATION,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_SET_INFORMATION,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_QUERY_EA,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_SET_EA,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_FLUSH_BUFFERS,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_QUERY_VOLUME_INFORMATION,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_SET_VOLUME_INFORMATION,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_DIRECTORY_CONTROL,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_FILE_SYSTEM_CONTROL,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_DEVICE_CONTROL,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_INTERNAL_DEVICE_CONTROL,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_SHUTDOWN,
       0,
-      MirrorFilterPreOperationNoPostOperation,
+      MFPreOperationNoPostOperation,
       NULL },                               //post operations not supported
 
     { IRP_MJ_LOCK_CONTROL,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_CLEANUP,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_CREATE_MAILSLOT,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_QUERY_SECURITY,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_SET_SECURITY,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_QUERY_QUOTA,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_SET_QUOTA,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_PNP,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_ACQUIRE_FOR_SECTION_SYNCHRONIZATION,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_RELEASE_FOR_SECTION_SYNCHRONIZATION,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_ACQUIRE_FOR_MOD_WRITE,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_RELEASE_FOR_MOD_WRITE,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_ACQUIRE_FOR_CC_FLUSH,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_RELEASE_FOR_CC_FLUSH,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_FAST_IO_CHECK_IF_POSSIBLE,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_NETWORK_QUERY_OPEN,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_MDL_READ,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_MDL_READ_COMPLETE,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_PREPARE_MDL_WRITE,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_MDL_WRITE_COMPLETE,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_VOLUME_MOUNT,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_VOLUME_DISMOUNT,
       0,
-      MirrorFilterPreOperation,
-      MirrorFilterPostOperation },
+      MFPreOperation,
+      MFPostOperation },
 
     { IRP_MJ_OPERATION_END }
+};
+
+//
+// This defines the context types used in MirrorFilter
+// 
+CONST FLT_CONTEXT_REGISTRATION ContextRegistration[] = {
+	 { FLT_INSTANCE_CONTEXT,
+      0,
+      MirrorContextCleanup,
+	  MIRROR_INSTANCE_CONTEXT_SIZE,
+      MIRROR_INSTANCE_CONTEXT_TAG },
+	   
+	 { FLT_CONTEXT_END }
 };
 
 //
@@ -336,15 +365,15 @@ CONST FLT_REGISTRATION FilterRegistration = {
     FLT_REGISTRATION_VERSION,           //  Version
     0,                                  //  Flags
 
-    NULL,                               //  Context
+	ContextRegistration,                //  Context
     Callbacks,                          //  Operation callbacks
 
-    MirrorFilterUnload,                           //  MiniFilterUnload
+    MFUnload,                           //  MiniFilterUnload
 
-    MirrorFilterInstanceSetup,                    //  InstanceSetup
-    MirrorFilterInstanceQueryTeardown,            //  InstanceQueryTeardown
-    MirrorFilterInstanceTeardownStart,            //  InstanceTeardownStart
-    MirrorFilterInstanceTeardownComplete,         //  InstanceTeardownComplete
+    MFInstanceSetup,                    //  InstanceSetup
+    MFInstanceQueryTeardown,            //  InstanceQueryTeardown
+    MFInstanceTeardownStart,            //  InstanceTeardownStart
+    MFInstanceTeardownComplete,         //  InstanceTeardownComplete
 
     NULL,                               //  GenerateFileName
     NULL,                               //  GenerateDestinationFileName
@@ -355,7 +384,7 @@ CONST FLT_REGISTRATION FilterRegistration = {
 
 
 NTSTATUS
-MirrorFilterInstanceSetup (
+MFInstanceSetup (
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _In_ FLT_INSTANCE_SETUP_FLAGS Flags,
     _In_ DEVICE_TYPE VolumeDeviceType,
@@ -404,7 +433,7 @@ Return Value:
 
 	DBG_INFO("Volume = %wZ\n", &volumeName);
 
-	status = MirrorShouldAttachVolume(&volumeName);
+	status = MirrorAttachInstance(FltObjects);
 	if (status != STATUS_SUCCESS && status != STATUS_FLT_DO_NOT_ATTACH) {
 		DBG_ERROR_CALL_FAIL(MirShouldAttachVolume, status);
 		status = STATUS_FLT_DO_NOT_ATTACH;
@@ -419,7 +448,7 @@ Exit:
 
 
 NTSTATUS
-MirrorFilterInstanceQueryTeardown (
+MFInstanceQueryTeardown (
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _In_ FLT_INSTANCE_QUERY_TEARDOWN_FLAGS Flags
     )
@@ -472,7 +501,7 @@ Exit:
 
 
 VOID
-MirrorFilterInstanceTeardownStart (
+MFInstanceTeardownStart (
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _In_ FLT_INSTANCE_TEARDOWN_FLAGS Flags
     )
@@ -517,7 +546,7 @@ Exit:
 
 
 VOID
-MirrorFilterInstanceTeardownComplete (
+MFInstanceTeardownComplete (
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _In_ FLT_INSTANCE_TEARDOWN_FLAGS Flags
     )
@@ -582,46 +611,47 @@ Return Value:
 {
     NTSTATUS status;
 
-    UNREFERENCED_PARAMETER( RegistryPath );
-
 	DBG_INFO_FUNC_ENTER();
 
+	//
+	//  Register with FltMgr to tell it our callback routines
+	//
 
-	DBG_INFO_FUNC_CALL(MirrorInitialize);
-	status = MirrorInitialize();
-	if (NT_SUCCESS(status)) {
-		//
-		//  Register with FltMgr to tell it our callback routines
-		//
+	status = FltRegisterFilter( DriverObject,
+								&FilterRegistration,
+								&gFilterHandle );
 
-		status = FltRegisterFilter( DriverObject,
-									&FilterRegistration,
-									&gFilterHandle );
+	NT_ASSERT(NT_SUCCESS(status));
 
-		FLT_ASSERT( NT_SUCCESS( status ) );
-
-		if (NT_SUCCESS( status )) {
-
-			//
-			//  Start filtering i/o
-			//
-
-			status = FltStartFiltering( gFilterHandle );
-
-			if (!NT_SUCCESS( status )) {
-
-				FltUnregisterFilter( gFilterHandle );
-				MirrorUninitialize();
-			}
-		}
+	if (!NT_SUCCESS(status)) {
+		DBG_ERROR_CALL_FAIL(FltRegisterFilter, status);
+		goto Exit;
 	}
 
+	DBG_INFO("Loading Configurations...\n");
+	status = MirrorInitialize(RegistryPath, gFilterHandle);
+	if (!NT_SUCCESS(status)) {
+		DBG_ERROR("Load Configuration failed...\n");
+		DBG_ERROR_CALL_FAIL(MirrorInitialize, status);
+		FltUnregisterFilter(gFilterHandle);
+		goto Exit;
+	}
+
+	DBG_INFO("Start filtering i/o...\n");
+	status = FltStartFiltering( gFilterHandle );
+	if (!NT_SUCCESS( status )) {
+		DBG_ERROR_CALL_FAIL(FltStartFiltering, status);
+		FltUnregisterFilter( gFilterHandle );
+		MirrorUninitialize();
+		goto Exit;
+	}
+Exit:
 	DBG_INFO_FUNC_LEAVE();
     return status;
 }
 
 NTSTATUS
-MirrorFilterUnload (
+MFUnload (
     _In_ FLT_FILTER_UNLOAD_FLAGS Flags
     )
 /*++
@@ -660,8 +690,106 @@ Return Value:
 /*************************************************************************
     MiniFilter callback routines.
 *************************************************************************/
+
+
 FLT_PREOP_CALLBACK_STATUS
-MirrorFilterPreOperation (
+MFPreCreate (
+    _Inout_ PFLT_CALLBACK_DATA Data,
+    _In_ PCFLT_RELATED_OBJECTS FltObjects,
+    _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
+    )
+/*++
+
+Routine Description:
+
+    This routine is a pre-operation dispatch routine for this miniFilter.
+
+    This is non-pageable because it could be called on the paging path
+
+Arguments:
+
+    Data - Pointer to the filter callbackData that is passed to us.
+
+    FltObjects - Pointer to the FLT_RELATED_OBJECTS data structure containing
+        opaque handles to this filter, instance, its associated volume and
+        file object.
+
+    CompletionContext - The context for the completion routine for this
+        operation.
+
+Return Value:
+
+    The return value is the status of the operation.
+
+--*/
+{
+	PFLT_IO_PARAMETER_BLOCK iopb = Data->Iopb;
+	FLT_PREOP_CALLBACK_STATUS status = FLT_PREOP_SUCCESS_WITH_CALLBACK;
+
+    UNREFERENCED_PARAMETER( FltObjects );
+    UNREFERENCED_PARAMETER( CompletionContext );
+
+	DBG_INFO_FUNC_ENTER();
+
+	DBG_INFO_FLT_FLAGS(Data->Flags);
+	DBG_INFO_IRP_FLAGS(iopb->IrpFlags);
+	DBG_INFO_PRINT_MAJOR_MINOR(iopb->MajorFunction, iopb->MinorFunction, iopb->OperationFlags);
+
+	if (!MFPreCreateCheck(Data)) {
+		goto Exit;
+	}
+ 
+	status = MirrorPreCreate(Data, FltObjects, CompletionContext);
+
+Exit:
+	DBG_INFO_FUNC_LEAVE();
+	return status;
+}
+
+BOOLEAN
+MFPreCreateCheck(
+	_In_ PFLT_CALLBACK_DATA Data
+)
+{
+	//
+    //  Check if this is a paging file as we don't want to redirect
+    //  the location of the paging file.
+    //
+    if (FlagOn( Data->Iopb->OperationFlags, SL_OPEN_PAGING_FILE )) {
+
+        DBG_INFO("Skip opening paging file\n");
+		return FALSE;
+    }
+
+	//
+    //  We are not allowing volume opens to be reparsed in the sample. 
+    //
+    if (FlagOn( Data->Iopb->TargetFileObject->Flags, FO_VOLUME_OPEN )) { 
+        DBG_INFO("Ignoring volume open\n");
+        return FALSE;
+
+    }
+
+	//
+    //  MirrorFilter does not honor the FILE_OPEN_REPARSE_POINT create option. For a 
+    //  symbolic the caller would pass this flag, for example, in order to open
+    //  the link for deletion. There is no concept of deleting the mapping for 
+    //  this filter so it is not clear what the purpose of honoring this flag 
+    //  would be.
+    //
+
+    //
+    //  Don't reparse an open by ID because it is not possible to determine create path intent. 
+    //
+    if (FlagOn( Data->Iopb->Parameters.Create.Options, FILE_OPEN_BY_FILE_ID )) {     
+		DBG_ERROR("Ignoring FILE_OPEN_BY_FILE_ID\n");
+        return FALSE;
+    }
+	return TRUE;
+}
+
+FLT_PREOP_CALLBACK_STATUS
+MFPreOperation (
     _Inout_ PFLT_CALLBACK_DATA Data,
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
@@ -702,7 +830,7 @@ Return Value:
 	
 	DBG_INFO_FLT_FLAGS(Data->Flags);
 	DBG_INFO_IRP_FLAGS(iopb->IrpFlags);
-	DBG_INFO_PRINT_MAJOR_MINOR(iopb->MajorFunction, iopb->MinorFunction);
+	DBG_INFO_PRINT_MAJOR_MINOR(iopb->MajorFunction, iopb->MinorFunction, iopb->OperationFlags);
 
     //
     //  See if this is an operation we would like the operation status
@@ -713,14 +841,14 @@ Return Value:
     //        actually granted.
     //
 
-    if (MirrorFilterDoRequestOperationStatus( Data )) {
+    if (MFDoRequestOperationStatus( Data )) {
 
         status = FltRequestOperationStatusCallback( Data,
-                                                    MirrorFilterOperationStatusCallback,
+                                                    MFOperationStatusCallback,
                                                     (PVOID)(++OperationStatusCtx) );
         if (!NT_SUCCESS(status)) {
 
-            DBG_ERROR("MirrorFilterPreOperation: FltRequestOperationStatusCallback Failed, status=%08x\n", status);
+            DBG_ERROR("FltRequestOperationStatusCallback Failed, status=%08x\n", status);
         }
     }
 
@@ -735,7 +863,7 @@ Return Value:
 
 
 VOID
-MirrorFilterOperationStatusCallback (
+MFOperationStatusCallback (
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _In_ PFLT_IO_PARAMETER_BLOCK ParameterSnapshot,
     _In_ NTSTATUS OperationStatus,
@@ -778,7 +906,7 @@ Return Value:
 
     DBG_INFO_FUNC_ENTER();
 
-    DBG_INFO("MirrorFilterOperationStatusCallback: Status=%08x ctx=%p IrpMj=%02x.%02x \"%s\"\n",
+    DBG_INFO("Status=%08x ctx=%p IrpMj=%02x.%02x \"%s\"\n",
                    OperationStatus,
                    RequesterContext,
                    ParameterSnapshot->MajorFunction,
@@ -790,7 +918,7 @@ Return Value:
 
 
 FLT_POSTOP_CALLBACK_STATUS
-MirrorFilterPostOperation (
+MFPostOperation (
     _Inout_ PFLT_CALLBACK_DATA Data,
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _In_opt_ PVOID CompletionContext,
@@ -837,7 +965,7 @@ Return Value:
 
 
 FLT_PREOP_CALLBACK_STATUS
-MirrorFilterPreOperationNoPostOperation (
+MFPreOperationNoPostOperation (
     _Inout_ PFLT_CALLBACK_DATA Data,
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
@@ -884,7 +1012,7 @@ Return Value:
 
 
 BOOLEAN
-MirrorFilterDoRequestOperationStatus(
+MFDoRequestOperationStatus(
     _In_ PFLT_CALLBACK_DATA Data
     )
 /*++

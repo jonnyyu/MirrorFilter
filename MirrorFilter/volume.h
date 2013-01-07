@@ -3,6 +3,7 @@
 #include <fltKernel.h>
 #include <mountmgr.h>
 #include "mirror.h"
+#include "volume_entry.h"
 
 typedef 
 VOID (*PMOUNTPOINT_ENUMCALLBACK)(

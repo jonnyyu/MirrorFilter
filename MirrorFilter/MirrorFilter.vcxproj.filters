@@ -60,6 +60,9 @@
     <ClCompile Include="create.c">
       <Filter>Source Files\Ops</Filter>
     </ClCompile>
+    <ClCompile Include="context.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MirrorFilter.rc">
@@ -93,6 +96,9 @@
     </ClInclude>
     <ClInclude Include="Ops.h">
       <Filter>Source Files\Ops</Filter>
+    </ClInclude>
+    <ClInclude Include="context.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
